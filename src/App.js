@@ -1,12 +1,16 @@
 import { useState } from "react";
 
-const N = 8; // размер доски 8x8
+const BOARD_SIZE = 8; // размер доски 8x8
 
 // вспомогательные функции
 /** индекс в массиве по координатам */
-const getIndexByRowCol = (r, c) => r * N + c; //
-const getRowColumnByIndex = (i) => [Math.floor(i / N), i % N]; // координаты по индексу в массиве
-const isDarkCell = (r, c) => (r + c) % 2 === 1; // черная клетка = могут стоять шашки, на белой нельзя
+const getIndexByRowCol = (row, col) => row * BOARD_SIZE + col;
+
+/** координаты по индексу в массиве */
+const getRowColByIndex = (i) => [Math.floor(i / BOARD_SIZE), i % BOARD_SIZE];
+
+/** черная клетка = могут стоять шашки, на белой нельзя */
+const isDarkCell = (row, col) => (row + col) % 2 === 1;
 
 // компоненты
 
@@ -27,22 +31,19 @@ function Square({ value, onSquareClick, dark, selected, hint }) {
 function Board({ squares, selected, validMoves, onSelect, onMove }) {
   return (
     <>
-      {[...Array(N)].map((_, r) => (
-        <div className="board-row" key={r}>
-          {[...Array(N)].map((_, c) => {
-            const i = getIndexByRowCol(r, c); // индекс клетки в массиве
+      {[...Array(BOARD_SIZE)].map((_, row) => (
+        <div className="board-row" key={row}>
+          {[...Array(BOARD_SIZE)].map((_, col) => {
+            const index = getIndexByRowCol(row, col); // индекс клетки в массиве
             return (
               <Square
-                key={i}
-                value={squares[i]}
-                dark={isDarkCell(r, c)}
-                selected={i === selected}
-                hint={validMoves.has(i)}
-                onSquareClick={
-                  () =>
-                    squares[i]
-                      ? onSelect(i) // клик по шашке → выбрать
-                      : onMove(i) // клик по пустой клетке → ход
+                key={index}
+                value={squares[index]}
+                dark={isDarkCell(row, col)}
+                selected={index === selected}
+                hint={validMoves.has(index)}
+                onSquareClick={() =>
+                  squares[index] ? onSelect(index) : onMove(index)
                 }
               />
             );
@@ -62,9 +63,9 @@ export default function Game() {
   const darkIsNext = currentMove % 2 === 0;
   const player = darkIsNext ? "dark" : "light";
 
-  const validMoves = canMove(squares, selected, player); // допустимые ходы для выделенной шашки - можем или не можем ходить
+  const validMoves = canMove(squares, selected, player);
 
-  //  клик по своей шашке - выделяем или снимаем выделение
+  // клик по своей шашке - выделяем или снимаем выделение
   function handleSelect(i) {
     if (squares[i] === player) {
       setSelected(i);
@@ -72,10 +73,21 @@ export default function Game() {
       setSelected(null);
     }
   }
+
   // клик по пустой клетке - если ход возможен, то делаем его
   function handleMove(i) {
     if (selected != null && validMoves.has(i)) {
       const next = squares.slice();
+      const [row1, col1] = getRowColByIndex(selected);
+      const [row2, col2] = getRowColByIndex(i);
+
+      // если прыжок на 2 клетки → убираем шашку соперника
+      if (Math.abs(row2 - row1) === 2 && Math.abs(col2 - col1) === 2) {
+        const midRow = (row1 + row2) / 2;
+        const midCol = (col1 + col2) / 2;
+        next[getIndexByRowCol(midRow, midCol)] = null;
+      }
+
       next[i] = squares[selected];
       next[selected] = null;
       const nextHistory = [...history.slice(0, currentMove + 1), next];
@@ -102,17 +114,17 @@ export default function Game() {
 
 // инициализация доски, расстановка шашек
 function initBoard() {
-  const board = Array(N * N).fill(null);
+  const board = Array(BOARD_SIZE * BOARD_SIZE).fill(null);
   // расставляем темные шашки
-  for (let r = 0; r < 3; r++) {
-    for (let c = 0; c < N; c++) {
-      if (isDarkCell(r, c)) board[getIndexByRowCol(r, c)] = "dark";
+  for (let row = 0; row < 3; row++) {
+    for (let col = 0; col < BOARD_SIZE; col++) {
+      if (isDarkCell(row, col)) board[getIndexByRowCol(row, col)] = "dark";
     }
   }
   // расставляем светлые шашки
-  for (let r = N - 3; r < N; r++) {
-    for (let c = 0; c < N; c++) {
-      if (isDarkCell(r, c)) board[getIndexByRowCol(r, c)] = "light";
+  for (let row = BOARD_SIZE - 3; row < BOARD_SIZE; row++) {
+    for (let col = 0; col < BOARD_SIZE; col++) {
+      if (isDarkCell(row, col)) board[getIndexByRowCol(row, col)] = "light";
     }
   }
   return board;
@@ -121,16 +133,45 @@ function initBoard() {
 /** вычисление допустимых ходов для выделенной шашки */
 function canMove(board, selected, player) {
   if (selected == null || board[selected] !== player) return new Set();
-  const [r, c] = getRowColumnByIndex(selected);
-  const rowDelta = player === "dark" ? +1 : -1;
+
+  const [row, col] = getRowColByIndex(selected);
+  const rowStep = player === "dark" ? +1 : -1;
   const moves = [];
 
-  for (const dc of [-1, +1]) {
-    const nr = r + rowDelta;
-    const nc = c + dc;
-    if (nr >= 0 && nr < N && nc >= 0 && nc < N) {
-      const to = getIndexByRowCol(nr, nc);
-      if (board[to] == null) moves.push(to);
+  for (const colStep of [-1, +1]) {
+    const nextRow = row + rowStep;
+    const nextCol = col + colStep;
+
+    // обычный ход
+    if (
+      nextRow >= 0 &&
+      nextRow < BOARD_SIZE &&
+      nextCol >= 0 &&
+      nextCol < BOARD_SIZE
+    ) {
+      const targetIndex = getIndexByRowCol(nextRow, nextCol);
+      if (board[targetIndex] == null) moves.push(targetIndex);
+    }
+
+    // прыжок через соперника
+    const jumpRow = row + rowStep * 2;
+    const jumpCol = col + colStep * 2;
+    if (
+      jumpRow >= 0 &&
+      jumpRow < BOARD_SIZE &&
+      jumpCol >= 0 &&
+      jumpCol < BOARD_SIZE
+    ) {
+      const midIndex = getIndexByRowCol(row + rowStep, col + colStep);
+      const jumpIndex = getIndexByRowCol(jumpRow, jumpCol);
+
+      if (
+        board[midIndex] &&
+        board[midIndex] !== player &&
+        board[jumpIndex] == null
+      ) {
+        moves.push(jumpIndex);
+      }
     }
   }
 
