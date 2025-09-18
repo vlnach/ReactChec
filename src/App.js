@@ -252,16 +252,6 @@ function canMoveQueen(board, selected, player) {
   return new Set(moves);
 }
 
-function handleSelect(index) {
-  const piece = squares[index];
-  const isMine =
-    (player === "dark" && (piece === "dark" || piece === "queenDark")) ||
-    (player === "light" && (piece === "light" || piece === "queenLight"));
-
-  if (isMine) setSelected(index);
-  else setSelected(null);
-}
-
 /** проверка, не стала ли шашка дамкой */
 function maybePromoteToKing(piece, row) {
   if (piece === "dark" && row === BOARD_SIZE - 1) return "queenDark";
