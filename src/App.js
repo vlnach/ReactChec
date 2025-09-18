@@ -71,6 +71,7 @@ export default function Game() {
   const darkIsNext = currentMove % 2 === 0;
   const player = darkIsNext ? "dark" : "light";
 
+  const winner = getWinner(squares);
   const validMoves = canMove(squares, selected, player);
 
   // клик по своей шашке - выделяем или снимаем выделение
@@ -94,7 +95,9 @@ export default function Game() {
   return (
     <div className="game">
       <div className="game-board">
-        <div className="status">Turn: {player}</div>
+        <div className="status">
+          {winner ? `Winner: ${winner}` : `Turn: ${player}`}
+        </div>
         <Board
           squares={squares}
           selected={selected}
@@ -153,12 +156,15 @@ function canMove(board, selected, player) {
 
   const piece = board[selected];
 
-  // дамка
-  if (piece === "queenDark" || piece === "queenLight") {
+  // если дамка
+  if (
+    (player === "dark" && piece === "queenDark") ||
+    (player === "light" && piece === "queenLight")
+  ) {
     return canMoveQueen(board, selected, player);
   }
 
-  // обычная шашка
+  // если обычная шашка
   if (piece !== player) return new Set();
 
   const [row, col] = getRowColByIndex(selected);
@@ -211,39 +217,34 @@ function canMoveQueen(board, selected, player) {
 
   for (const rowStep of [-1, +1]) {
     for (const colStep of [-1, +1]) {
-      const nextRow = row + rowStep;
-      const nextCol = col + colStep;
+      let nextRow = row + rowStep;
+      let nextCol = col + colStep;
+      let jumped = false;
 
-      // обычный ход
-      if (
+      while (
         nextRow >= 0 &&
         nextRow < BOARD_SIZE &&
         nextCol >= 0 &&
         nextCol < BOARD_SIZE
       ) {
         const targetIndex = getIndexByRowCol(nextRow, nextCol);
-        if (board[targetIndex] == null) moves.push(targetIndex);
-      }
 
-      // прыжок через соперника
-      const jumpRow = row + rowStep * 2;
-      const jumpCol = col + colStep * 2;
-      if (
-        jumpRow >= 0 &&
-        jumpRow < BOARD_SIZE &&
-        jumpCol >= 0 &&
-        jumpCol < BOARD_SIZE
-      ) {
-        const midIndex = getIndexByRowCol(row + rowStep, col + colStep);
-        const jumpIndex = getIndexByRowCol(jumpRow, jumpCol);
-
-        if (
-          board[midIndex] &&
-          !board[midIndex].includes(player) &&
-          board[jumpIndex] == null
-        ) {
-          moves.push(jumpIndex);
+        if (board[targetIndex] == null) {
+          moves.push(targetIndex); // пустая клетка всегда ход
+          // если дамка уже перепрыгнула соперника, добавляем только одну клетку и стоп
+          if (jumped) break;
+        } else {
+          if (!board[targetIndex].includes(player) && !jumped) {
+            // нашли соперника → следующая клетка после него должна быть пустой
+            jumped = true;
+          } else {
+            // своя фигура или второй подряд соперник → стоп
+            break;
+          }
         }
+
+        nextRow += rowStep;
+        nextCol += colStep;
       }
     }
   }
@@ -251,9 +252,31 @@ function canMoveQueen(board, selected, player) {
   return new Set(moves);
 }
 
+function handleSelect(index) {
+  const piece = squares[index];
+  const isMine =
+    (player === "dark" && (piece === "dark" || piece === "queenDark")) ||
+    (player === "light" && (piece === "light" || piece === "queenLight"));
+
+  if (isMine) setSelected(index);
+  else setSelected(null);
+}
+
 /** проверка, не стала ли шашка дамкой */
 function maybePromoteToKing(piece, row) {
   if (piece === "dark" && row === BOARD_SIZE - 1) return "queenDark";
   if (piece === "light" && row === 0) return "queenLight";
   return piece;
+}
+
+function getWinner(board) {
+  const hasDark = board.some((cell) => cell === "dark" || cell === "queenDark");
+  const hasLight = board.some(
+    (cell) => cell === "light" || cell === "queenLight"
+  );
+
+  if (!hasDark) return "light"; // светлые win
+  if (!hasLight) return "dark"; // тёмные win
+
+  return null; // пока никто не выиграл
 }
