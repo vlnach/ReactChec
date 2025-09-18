@@ -22,7 +22,15 @@ function Square({ value, onSquareClick, dark, selected, hint }) {
 
   return (
     <button className={className} onClick={onSquareClick}>
-      {value === "dark" ? "●" : value === "light" ? "○" : ""}
+      {value === "dark"
+        ? "●"
+        : value === "light"
+        ? "○"
+        : value === "queenDark"
+        ? "♚"
+        : value === "queenLight"
+        ? "♔"
+        : ""}
     </button>
   );
 }
@@ -53,7 +61,7 @@ function Board({ squares, selected, validMoves, onSelect, onMove }) {
     </>
   );
 }
-
+/** главная компонента игры */
 export default function Game() {
   const [history, setHistory] = useState([initBoard()]);
   const [selected, setSelected] = useState(null);
@@ -66,31 +74,18 @@ export default function Game() {
   const validMoves = canMove(squares, selected, player);
 
   // клик по своей шашке - выделяем или снимаем выделение
-  function handleSelect(i) {
-    if (squares[i] === player) {
-      setSelected(i);
+  function handleSelect(index) {
+    if (squares[index] && squares[index].includes(player)) {
+      setSelected(index);
     } else {
       setSelected(null);
     }
   }
-
-  // клик по пустой клетке - если ход возможен, то делаем его
-  function handleMove(i) {
-    if (selected != null && validMoves.has(i)) {
-      const next = squares.slice();
-      const [row1, col1] = getRowColByIndex(selected);
-      const [row2, col2] = getRowColByIndex(i);
-
-      // если прыжок на 2 клетки → убираем шашку соперника
-      if (Math.abs(row2 - row1) === 2 && Math.abs(col2 - col1) === 2) {
-        const midRow = (row1 + row2) / 2;
-        const midCol = (col1 + col2) / 2;
-        next[getIndexByRowCol(midRow, midCol)] = null;
-      }
-
-      next[i] = squares[selected];
-      next[selected] = null;
-      const nextHistory = [...history.slice(0, currentMove + 1), next];
+  // клик по пустой клетке - если есть выделенная шашка и ход допустим, делаем ход
+  function handleMove(toIndex) {
+    if (selected != null && validMoves.has(toIndex)) {
+      const nextBoard = makeMove(squares, selected, toIndex);
+      const nextHistory = [...history.slice(0, currentMove + 1), nextBoard];
       setHistory(nextHistory);
       setSelected(null);
     }
@@ -130,9 +125,41 @@ function initBoard() {
   return board;
 }
 
+// функция выполнения хода (специально упрощаю хендл муф, чтобы не запутаться)
+function makeMove(board, fromIndex, toIndex) {
+  const newBoard = board.slice();
+  const [row1, col1] = getRowColByIndex(fromIndex);
+  const [row2, col2] = getRowColByIndex(toIndex);
+
+  // прыжок → убираем соперника
+  if (Math.abs(row2 - row1) === 2 && Math.abs(col2 - col1) === 2) {
+    const midRow = (row1 + row2) / 2;
+    const midCol = (col1 + col2) / 2;
+    newBoard[getIndexByRowCol(midRow, midCol)] = null;
+  }
+
+  newBoard[toIndex] = newBoard[fromIndex];
+  newBoard[fromIndex] = null;
+
+  // проверяем, не стала ли шашка дамкой
+  newBoard[toIndex] = maybePromoteToKing(newBoard[toIndex], row2);
+
+  return newBoard;
+}
+
 /** вычисление допустимых ходов для выделенной шашки */
 function canMove(board, selected, player) {
-  if (selected == null || board[selected] !== player) return new Set();
+  if (selected == null) return new Set();
+
+  const piece = board[selected];
+
+  // дамка
+  if (piece === "queenDark" || piece === "queenLight") {
+    return canMoveQueen(board, selected, player);
+  }
+
+  // обычная шашка
+  if (piece !== player) return new Set();
 
   const [row, col] = getRowColByIndex(selected);
   const rowStep = player === "dark" ? +1 : -1;
@@ -167,7 +194,7 @@ function canMove(board, selected, player) {
 
       if (
         board[midIndex] &&
-        board[midIndex] !== player &&
+        !board[midIndex].includes(player) &&
         board[jumpIndex] == null
       ) {
         moves.push(jumpIndex);
@@ -176,4 +203,57 @@ function canMove(board, selected, player) {
   }
 
   return new Set(moves);
+}
+
+function canMoveQueen(board, selected, player) {
+  const [row, col] = getRowColByIndex(selected);
+  const moves = [];
+
+  for (const rowStep of [-1, +1]) {
+    for (const colStep of [-1, +1]) {
+      const nextRow = row + rowStep;
+      const nextCol = col + colStep;
+
+      // обычный ход
+      if (
+        nextRow >= 0 &&
+        nextRow < BOARD_SIZE &&
+        nextCol >= 0 &&
+        nextCol < BOARD_SIZE
+      ) {
+        const targetIndex = getIndexByRowCol(nextRow, nextCol);
+        if (board[targetIndex] == null) moves.push(targetIndex);
+      }
+
+      // прыжок через соперника
+      const jumpRow = row + rowStep * 2;
+      const jumpCol = col + colStep * 2;
+      if (
+        jumpRow >= 0 &&
+        jumpRow < BOARD_SIZE &&
+        jumpCol >= 0 &&
+        jumpCol < BOARD_SIZE
+      ) {
+        const midIndex = getIndexByRowCol(row + rowStep, col + colStep);
+        const jumpIndex = getIndexByRowCol(jumpRow, jumpCol);
+
+        if (
+          board[midIndex] &&
+          !board[midIndex].includes(player) &&
+          board[jumpIndex] == null
+        ) {
+          moves.push(jumpIndex);
+        }
+      }
+    }
+  }
+
+  return new Set(moves);
+}
+
+/** проверка, не стала ли шашка дамкой */
+function maybePromoteToKing(piece, row) {
+  if (piece === "dark" && row === BOARD_SIZE - 1) return "queenDark";
+  if (piece === "light" && row === 0) return "queenLight";
+  return piece;
 }
