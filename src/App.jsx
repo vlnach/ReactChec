@@ -1,20 +1,15 @@
+import React from "react";
 import { useState } from "react";
-
-const BOARD_SIZE = 8; // размер доски 8x8
-
-// вспомогательные функции
-/** индекс в массиве по координатам */
-const getIndexByRowCol = (row, col) => row * BOARD_SIZE + col;
-
-/** координаты по индексу в массиве */
-const getRowColByIndex = (i) => [Math.floor(i / BOARD_SIZE), i % BOARD_SIZE];
-
-/** черная клетка = могут стоять шашки, на белой нельзя */
-const isDarkCell = (row, col) => (row + col) % 2 === 1;
+import {
+  BOARD_SIZE,
+  getIndexByRowCol,
+  getRowColByIndex,
+  isDarkCell,
+} from "./constants.js";
 
 // компоненты
 
-function Square({ value, onSquareClick, dark, selected, hint }) {
+export function Square({ value, onSquareClick, dark, selected, hint }) {
   let className = "square";
   if (dark) className += " square--dark";
   if (selected) className += " square--selected";
@@ -111,7 +106,7 @@ export default function Game() {
 }
 
 // инициализация доски, расстановка шашек
-function initBoard() {
+export function initBoard() {
   const board = Array(BOARD_SIZE * BOARD_SIZE).fill(null);
   // расставляем темные шашки
   for (let row = 0; row < 3; row++) {
@@ -129,7 +124,7 @@ function initBoard() {
 }
 
 // функция выполнения хода (специально упрощаю хендл муф, чтобы не запутаться)
-function makeMove(board, fromIndex, toIndex) {
+export function makeMove(board, fromIndex, toIndex) {
   const newBoard = board.slice();
   const [row1, col1] = getRowColByIndex(fromIndex);
   const [row2, col2] = getRowColByIndex(toIndex);
@@ -151,7 +146,7 @@ function makeMove(board, fromIndex, toIndex) {
 }
 
 /** вычисление допустимых ходов для выделенной шашки */
-function canMove(board, selected, player) {
+export function canMove(board, selected, player) {
   if (selected == null) return new Set();
 
   const piece = board[selected];
@@ -211,7 +206,7 @@ function canMove(board, selected, player) {
   return new Set(moves);
 }
 
-function canMoveQueen(board, selected, player) {
+export function canMoveQueen(board, selected, player) {
   const [row, col] = getRowColByIndex(selected);
   const moves = [];
 
@@ -219,7 +214,7 @@ function canMoveQueen(board, selected, player) {
     for (const colStep of [-1, +1]) {
       let nextRow = row + rowStep;
       let nextCol = col + colStep;
-      let jumped = false;
+      let jumped = false; // уже перепрыгнули одного соперника?
 
       while (
         nextRow >= 0 &&
@@ -228,17 +223,23 @@ function canMoveQueen(board, selected, player) {
         nextCol < BOARD_SIZE
       ) {
         const targetIndex = getIndexByRowCol(nextRow, nextCol);
+        const cell = board[targetIndex];
 
-        if (board[targetIndex] == null) {
-          moves.push(targetIndex); // пустая клетка всегда ход
-          // если дамка уже перепрыгнула соперника, добавляем только одну клетку и стоп
+        if (cell == null) {
+          // пусто → можно ходить; если до этого перепрыгнули соперника — только одна клетка и стоп
+          moves.push(targetIndex);
           if (jumped) break;
         } else {
-          if (!board[targetIndex].includes(player) && !jumped) {
-            // нашли соперника → следующая клетка после него должна быть пустой
+          // встретили фигуру: определяем, своя или чужая
+          const isMy =
+            (player === "dark" && (cell === "dark" || cell === "queenDark")) ||
+            (player === "light" && (cell === "light" || cell === "queenLight"));
+
+          if (!isMy && !jumped) {
+            // первый встреченный соперник: помечаем, что следующая пустая клетка за ним — посадочная
             jumped = true;
           } else {
-            // своя фигура или второй подряд соперник → стоп
+            // своя фигура ИЛИ это уже второй соперник подряд → дорога закрыта
             break;
           }
         }
@@ -253,13 +254,13 @@ function canMoveQueen(board, selected, player) {
 }
 
 /** проверка, не стала ли шашка дамкой */
-function maybePromoteToKing(piece, row) {
+export function maybePromoteToKing(piece, row) {
   if (piece === "dark" && row === BOARD_SIZE - 1) return "queenDark";
   if (piece === "light" && row === 0) return "queenLight";
   return piece;
 }
 
-function getWinner(board) {
+export function getWinner(board) {
   const hasDark = board.some((cell) => cell === "dark" || cell === "queenDark");
   const hasLight = board.some(
     (cell) => cell === "light" || cell === "queenLight"
