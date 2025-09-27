@@ -5,6 +5,7 @@ import { canMoveQueen } from "./App.jsx";
 import { getIndexByRowCol } from "./constants.js";
 import { canMove } from "./App.jsx";
 import { Square } from "./App.jsx";
+import { makeMove } from "./App.jsx";
 
 describe("Square", () => {
   it("рисует символ для dark", () => {
