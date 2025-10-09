@@ -1,16 +1,15 @@
-/* ====== Параметры темы ====== */
 :root {
-  --cell: 80px; /* размер клетки: 64/72/80/96px — на вкус */
-  --light: #f1dfc4; /* светлая клетка */
-  --dark: #b68661; /* тёмная клетка */
-  --frame: #9a6b4f; /* рамка доски */
-  --ink: #0f172a; /* тёмный текст */
-  --sel: #3b82f6; /* цвет выделения */
-  --hint: #22c55e; /* подсказка хода */
-  --card: #ffffff; /* фон карточки */
+  --cell: 80px; /* size of one cell */
+  --light: #f1dfc4; /* light cell */
+  --dark: #b68661; /* dark cell */
+  --frame: #9a6b4f; /* board frame */
+  --ink: #0f172a; /* dark text */
+  --sel: #3b82f6; /* selection color */
+  --hint: #22c55e; /* move hint */
+  --card: #ffffff; /* card background */
 }
 
-/* высота на весь экран + центрирование */
+/* full height + centering */
 html,
 body,
 #root {
@@ -29,18 +28,17 @@ body {
   color: var(--ink);
 }
 
-/* контейнер всей игры по центру окна */
 .game {
   min-height: 100dvh;
   display: grid;
-  place-items: center; /* центр и по горизонтали, и по вертикали */
+  place-items: center; /* center both horizontally and vertically */
   padding: 16px 16px;
 }
 
 /* «карточка» с заголовком и самой доской */
 .game-board {
   display: grid;
-  justify-items: center; /* центрирует статус и доску */
+  justify-items: center; /* center status and board */
   background: var(--card);
   padding: 18px 18px 18px;
   border-radius: 16px;
@@ -114,6 +112,7 @@ body {
   width: var(--cell);
   height: var(--cell);
   display: inline-flex;
+
   align-items: center;
   justify-content: center;
   background: var(--light);
@@ -121,7 +120,9 @@ body {
   line-height: 0;
   border: 0;
   padding: 0;
-  margin: auto;
+  padding-block: 0px;
+
+  margin: 0;
   cursor: pointer;
   user-select: none;
   transition: transform 0.8s ease, filter 0.8s ease;
@@ -132,7 +133,7 @@ body {
 
 /* лёгкий ховер на пустых клетках (чтоб «живее» было) */
 .square:hover {
-  filter: brightness(1.03);
+  filter: brightness(1.3);
 }
 
 /* выбранная шашка */
@@ -158,6 +159,12 @@ body {
 .square:focus-visible {
   outline: 3px solid var(--sel);
   outline-offset: 2px;
+}
+
+.square .glyph {
+  display: inline-block; /* detach from line box metrics */
+  line-height: 1; /* ignore font's default leading */
+  transform: translateY(-5%); /* nudge down by 1–3% if needed */
 }
 
 /* адаптив: на малых ширинах немного уменьшим клетки */

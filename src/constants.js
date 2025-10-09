@@ -1,14 +1,17 @@
-export const BOARD_SIZE = 8; // размер доски 8x8
+export const BOARD_SIZE = 8; // 8x8 board
+export const isMyPiece = (player, cell) =>
+  (player === "dark" && (cell === "dark" || cell === "queenDark")) ||
+  (player === "light" && (cell === "light" || cell === "queenLight"));
 
-// вспомогательные функции
-/** индекс в массиве по координатам */
+// helper functions
+/** index in array by coordinates */
 export const getIndexByRowCol = (row, col) => row * BOARD_SIZE + col;
 
-/** координаты по индексу в массиве */
+/** coordinates by index in array */
 export const getRowColByIndex = (i) => [
   Math.floor(i / BOARD_SIZE),
   i % BOARD_SIZE,
 ];
 
-/** черная клетка = могут стоять шашки, на белой нельзя */
+/** dark cell = can hold pieces, white cannot */
 export const isDarkCell = (row, col) => (row + col) % 2 === 1;
