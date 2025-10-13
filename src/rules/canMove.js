@@ -1,74 +1,108 @@
-/** computes the valid moves for the selected piece */
+// src/rules/canMove.js
+/** Computes the valid moves for the selected piece */
 import {
   BOARD_SIZE,
   getIndexByRowCol,
   getRowColByIndex,
-} from "..//constants.js";
+} from "../constants.js";
 import { canMoveQueen } from "./canMoveQueen.js";
 
-export function canMove(board, selected, player, captureOnly = false) {
-  if (selected == null) return new Set();
+/**
+ * Unified move computation for any piece.
+ * Delegates to canMoveQueen for a queen; uses local rules for regular checkers.
+ *
+ * @param {Array<null|"dark"|"light"|"queenDark"|"queenLight">} boardCells
+ * @param {number|null} originIndex
+ * @param {"dark"|"light"} activePlayer
+ * @param {boolean} captureOnly
+ * @returns {Set<number>}
+ */
+export function canMove(
+  boardCells,
+  originIndex,
+  activePlayer,
+  captureOnly = false
+) {
+  if (originIndex == null) return new Set();
 
-  const piece = board[selected];
+  const originCell = boardCells[originIndex];
 
-  // if the piece is a queen, use queen movement rules
+  // Queen — use queen rules
+  const isQueenDark = originCell === "queenDark";
+  const isQueenLight = originCell === "queenLight";
   if (
-    (player === "dark" && piece === "queenDark") ||
-    (player === "light" && piece === "queenLight")
+    (activePlayer === "dark" && isQueenDark) ||
+    (activePlayer === "light" && isQueenLight)
   ) {
-    return canMoveQueen(board, selected, player, captureOnly);
+    return canMoveQueen(boardCells, originIndex, activePlayer, captureOnly);
   }
 
-  // regular piece movement rules
-  if (piece !== player) return new Set();
+  // Regular checker
+  const [originRowIndex, originColIndex] = getRowColByIndex(originIndex);
+  const forwardRowStep = activePlayer === "dark" ? +1 : -1;
 
-  const [row, col] = getRowColByIndex(selected);
-  const rowStep = player === "dark" ? +1 : -1;
+  const slideTargets = [];
+  const captureTargets = [];
 
-  const steps = []; // regular moves (only forward)
-  const jumps = []; // jumps (in all directions)
-
-  // ----- regular steps: only forward -----
+  // Simple one-step forward diagonals
   for (const colStep of [-1, +1]) {
-    const nRow = row + rowStep;
-    const nCol = col + colStep;
-    if (nRow >= 0 && nRow < BOARD_SIZE && nCol >= 0 && nCol < BOARD_SIZE) {
-      const i = getIndexByRowCol(nRow, nCol);
-      if (board[i] == null) steps.push(i);
-    }
-  }
+    const dstRow = originRowIndex + forwardRowStep;
+    const dstCol = originColIndex + colStep;
 
-  // ----- jumps: in all four diagonals -----
-  for (const dRow of [-1, +1]) {
-    for (const dCol of [-1, +1]) {
-      const rMid = row + dRow;
-      const cMid = col + dCol;
-      const rDst = row + 2 * dRow;
-      const cDst = col + 2 * dCol;
-
-      if (
-        rMid < 0 ||
-        rMid >= BOARD_SIZE ||
-        cMid < 0 ||
-        cMid >= BOARD_SIZE ||
-        rDst < 0 ||
-        rDst >= BOARD_SIZE ||
-        cDst < 0 ||
-        cDst >= BOARD_SIZE
-      )
-        continue;
-
-      const mid = board[getIndexByRowCol(rMid, cMid)];
-      const dst = board[getIndexByRowCol(rDst, cDst)];
-
-      if (mid && !mid.includes(player) && dst == null) {
-        jumps.push(getIndexByRowCol(rDst, cDst));
+    if (
+      dstRow >= 0 &&
+      dstRow < BOARD_SIZE &&
+      dstCol >= 0 &&
+      dstCol < BOARD_SIZE
+    ) {
+      const dstIndex = getIndexByRowCol(dstRow, dstCol);
+      if (boardCells[dstIndex] == null) {
+        slideTargets.push(dstIndex);
       }
     }
   }
 
-  // if we are in "capture only" mode (continuing a chain) — return only jumps
-  // otherwise jumps take precedence over regular steps
-  const result = captureOnly ? jumps : jumps.length ? jumps : steps;
-  return new Set(result);
+  // Captures: jump over an opponent by two diagonals
+  for (const rowStep of [-1, +1]) {
+    for (const colStep of [-1, +1]) {
+      const midRow = originRowIndex + rowStep;
+      const midCol = originColIndex + colStep;
+      const dstRow = originRowIndex + 2 * rowStep;
+      const dstCol = originColIndex + 2 * colStep;
+
+      if (
+        midRow < 0 ||
+        midRow >= BOARD_SIZE ||
+        midCol < 0 ||
+        midCol >= BOARD_SIZE ||
+        dstRow < 0 ||
+        dstRow >= BOARD_SIZE ||
+        dstCol < 0 ||
+        dstCol >= BOARD_SIZE
+      )
+        continue;
+
+      const midIndex = getIndexByRowCol(midRow, midCol);
+      const dstIndex = getIndexByRowCol(dstRow, dstCol);
+      const midCell = boardCells[midIndex];
+      const dstCell = boardCells[dstIndex];
+
+      const isOpponent =
+        midCell != null &&
+        !(
+          (activePlayer === "dark" &&
+            (midCell === "dark" || midCell === "queenDark")) ||
+          (activePlayer === "light" &&
+            (midCell === "light" || midCell === "queenLight"))
+        );
+
+      if (isOpponent && dstCell == null) {
+        captureTargets.push(dstIndex);
+      }
+    }
+  }
+
+  if (captureOnly) return new Set(captureTargets);
+  if (captureTargets.length > 0) return new Set(captureTargets);
+  return new Set(slideTargets);
 }
