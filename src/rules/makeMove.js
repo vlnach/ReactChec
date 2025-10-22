@@ -1,4 +1,3 @@
-// src/rules/makeMove.js
 import { getRowColByIndex, getIndexByRowCol } from "../constants.js";
 import { maybePromoteToQueen } from "./maybePromote.js";
 

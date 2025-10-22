@@ -1,4 +1,3 @@
-// English comments only
 export function Square({ value, onSquareClick, dark, selected, hint }) {
   let className = "square";
   if (dark) className += " square--dark";

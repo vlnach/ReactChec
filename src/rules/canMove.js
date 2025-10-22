@@ -1,4 +1,3 @@
-// src/rules/canMove.js
 /** Computes the valid moves for the selected piece */
 import {
   BOARD_SIZE,

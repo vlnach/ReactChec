@@ -1,4 +1,3 @@
-// src/rules/canMoveQueen.js
 import {
   BOARD_SIZE,
   getIndexByRowCol,
