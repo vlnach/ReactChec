@@ -6,7 +6,7 @@ import {
   isMyPiece,
 } from "./constants.js";
 
-import { Board } from "./ui/board.js";
+import { Board } from "./ui/board.jsx";
 import { initBoard } from "./ui/initBoard.js";
 import { canMove } from "./rules/canMove.js";
 import { makeMove } from "./rules/makeMove.js";

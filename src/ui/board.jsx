@@ -1,4 +1,4 @@
-import { Square } from "./square.js";
+import { Square } from "./square.jsx";
 import { BOARD_SIZE, getIndexByRowCol, isDarkCell } from "../constants.js";
 
 export function Board({ squares, selected, validMoves, onSelect, onMove }) {
