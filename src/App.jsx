@@ -8,7 +8,7 @@ import {
 
 import { Board } from "./ui/board.jsx";
 import { initBoard } from "./ui/initBoard.js";
-import { canMove } from "./rules/canMove.js";
+import { getAvailableMoves } from "./rules/getAvailableMoves.js";
 import { makeMove } from "./rules/makeMove.js";
 import { getWinner } from "./rules/getWinner.js";
 
@@ -28,8 +28,8 @@ export default function Game() {
   const winner = getWinner(squares);
   const validMoves =
     mustJumpFrom != null
-      ? canMove(squares, mustJumpFrom, player, true) // show only captures
-      : canMove(squares, selected, player); // normal mode
+      ? getAvailableMoves(squares, mustJumpFrom, player, true) // show only captures
+      : getAvailableMoves(squares, selected, player); // normal mode
 
   // click on own piece - select or deselect
   function handleSelect(index) {
