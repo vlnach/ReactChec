@@ -125,9 +125,7 @@ export function canMoveQueen(
   captureOnly = false
 ) {
   if (originIndex == null) {
-    throw new Error(
-      "originIndex (the position of the checker to compute moves for) cannot be null"
-    );
+    return new Set();
   }
 
   const [originRowIndex, originColIndex] = getRowColByIndex(originIndex);
