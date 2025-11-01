@@ -1,11 +1,9 @@
 import { expect, it, describe } from "vitest";
-import { initBoard } from "./ui/initBoard.js";
-import { isMyPiece, getIndexByRowCol, getRowColByIndex } from "./constants.js";
-import { canMove } from "./rules/canMove.js";
+import { getIndexByRowCol, getRowColByIndex } from "./constants.js";
+import { getAvailableMoves, canMoveQueen } from "./rules/getAvailableMoves.js";
 import { makeMove } from "./rules/makeMove.js";
 import { maybePromoteToQueen } from "./rules/maybePromote.js";
 import { getWinner } from "./rules/getWinner.js";
-import { canMoveQueen } from "./rules/canMoveQueen.js";
 
 describe("Square render symbol tests", () => {
   it("renders symbol for dark", () => {
@@ -74,12 +72,18 @@ describe("Queen movement from center", () => {
   });
 });
 
-describe("canMove regular checker", () => {
+describe("getAvailableMoves for regular checker", () => {
+  it("returns empty set on null originIndex", () => {
+    const res = getAvailableMoves(Array(64).fill(null), null, "dark");
+    expect(res instanceof Set).toBe(true);
+    expect(res.size).toBe(0);
+  });
+
   it("allows simple forward diagonals when empty", () => {
     const board = Array(64).fill(null);
     board[getIndexByRowCol(2, 3)] = "dark";
 
-    const moves = canMove(board, getIndexByRowCol(2, 3), "dark");
+    const moves = getAvailableMoves(board, getIndexByRowCol(2, 3), "dark");
     const arr = Array.from(moves);
 
     expect(arr).toContain(getIndexByRowCol(3, 2));
@@ -91,7 +95,7 @@ describe("canMove regular checker", () => {
     board[getIndexByRowCol(2, 3)] = "dark";
     board[getIndexByRowCol(3, 4)] = "light";
 
-    const moves = canMove(board, getIndexByRowCol(2, 3), "dark");
+    const moves = getAvailableMoves(board, getIndexByRowCol(2, 3), "dark");
     const arr = Array.from(moves);
 
     expect(arr).toContain(getIndexByRowCol(4, 5)); // capture landing
