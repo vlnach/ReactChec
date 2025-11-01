@@ -1,226 +1,151 @@
-Checkers (Russian draughts) — React
+# Checkers (Russian Draughts) — React
 
-A small implementation of Russian checkers in React: piece setup, legal moves, promotion to king, mandatory capture with chaining, and win detection. The project also includes unit tests for the core game logic.
+A compact but complete implementation of **Russian checkers** in React: setup, legal moves (men + flying kings), promotion, **mandatory capture with chaining**, and basic **win detection**. Core rules are unit-tested.
 
-What’s implemented
+Live demo: [Open in browser](https://vlnach.github.io/ReactChec/)
 
-8×8 board on dark squares only.
+## Table of Contents
 
-Men (regular pieces)
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [Getting Started](#getting-started)
+- [Project Structure](#project-structure)
+- [Key Game Logic](#key-game-logic)
+- [Why Set](#why-set)
+- [Design Decisions](#design-decisions)
+- [Roadmap](#roadmap)
+- [Troubleshooting](#troubleshooting)
+- [License](#license)
 
-Move forward one square (diagonally).
+## Features
 
-Capture diagonally forward or backward by jumping over an adjacent opponent piece onto the empty square immediately beyond.
+- **8×8 board** (play on dark squares only)
+- **Men (regular pieces)**
+  - Move one diagonal square forward
+  - Capture diagonally **forward or backward**
+- **Kings (flying kings)**
+  - Move any number of diagonal squares
+  - Capture by jumping exactly one opponent and must land on the first empty square after it (current variant)
+- **Mandatory capture & chaining**
+  - After a capture, if the same piece can continue capturing, the turn continues with capture-only options
+- **Promotion**
+  - A man promotes to `queenDark` / `queenLight` on the far rank, including during a capture sequence
+- **Win detection**
+  - Declares a winner when the opponent has no pieces left
+- **Visual cues**
+  - Selected square, legal move hints (dots), active player badge
 
-Kings (“flying kings”)
+Rules note: in Russian checkers, men may capture backward. The code reflects that.
 
-Move any number of squares diagonally.
+## Tech Stack
 
-Capture by jumping over exactly one opponent piece and landing on the first empty square after it (current variant).
+- React (Vite or CRA)
+- Plain CSS for styling
+- Jest or Vitest for unit tests
 
-Mandatory capture
+## Getting Started
 
-If your move captured at least one piece and the same piece can continue capturing, your turn does not end; you must continue with that piece (chaining).
+Install and run in development:
 
-Promotion
-
-A man promotes upon reaching the far edge: dark → queenDark, light → queenLight. Promotion also occurs during a capture sequence.
-
-Win detection
-
-The game declares a winner when the opponent has no pieces left.
-
-Visual cues:
-
-Selected square, legal moves (hint dots), and current player badge.
-
-Rules note: In Russian checkers, men may capture backward. The code reflects that.
-
-Tech stack
-
-React + react-scripts-style dev server
-
-Plain CSS
-
-Jest (via react-scripts) for tests
-
-Getting started
-
-Install and run:
-
+```bash
 npm install
-npm start
+npm run dev    # if using Vite
+# or
+npm start      # if using CRA
+```
 
-
-Visit http://localhost:3000.
+Open the app: http://localhost:3000
 
 Run tests:
 
+```bash
 npm test
+```
 
-Project structure
+Build for production:
+
+```bash
+npm run build
+```
+
+## Project Structure
+
+```
 src/
-  App.jsx          # React components + game logic and state
-  constants.js     # 8×8 helpers: index<->row/col, dark-square check
-  index.js         # app entry
-  styles.css       # UI styles
-  App.test.js      # sample unit tests
+  App.jsx            # UI + game state and orchestration
+  constants.js       # BOARD_SIZE, index<->row/col helpers, isDarkCell, isMyPiece
+  rules/
+    moves.js         # getAvailableMoves, canMoveQueen — core rules
+    makeMove.js      # apply move: remove captured, move piece, promotion
+  styles.css         # styling and CSS variables
+  index.js           # app entry
+__tests__/
+  *.test.js          # unit tests for rules and edge cases
 public/
   index.html
+```
 
-Key functions (where the rules live)
+If rules currently live inside `App.jsx`, that's fine; `rules/` shows a possible future split.
 
-initBoard() — initial 12 vs 12 setup on dark squares.
+## Key Game Logic
 
-canMove(board, selected, player, captureOnly?) — legal moves for a man.
+### getAvailableMoves(boardCells, originIndex, activePlayer, captureOnly=false): Set<number>
 
-Returns a Set of destination indexes.
+- Returns a Set of legal destination cell indexes for the selected piece.
+- Throws an Error if `originIndex == null` to distinguish invalid requests from "no moves".
+- When `captureOnly` is `true`, returns only capture landings (used during chaining).
 
-If captureOnly is true, returns only captures (used during chaining).
+### canMoveQueen(boardCells, originIndex, activePlayer, captureOnly=false): Set<number>
 
-canMoveQueen(board, selected, player, captureOnly?) — same for kings.
+- Same contract for flying kings.
+- In this variant the king must land on the first empty square after the captured piece.
 
-makeMove(board, fromIndex, toIndex) — applies a move:
+### makeMove(board, fromIndex, toIndex)
 
-Removes the jumped piece if any,
+- Applies the move, removes the jumped piece (if any), and performs promotion via `maybePromoteToKing`.
 
-Moves the piece,
+### getWinner(board): "dark" | "light" | null
 
-Applies promotion (via maybePromoteToKing).
+- Returns the winner or `null` if no winner yet.
 
-maybePromoteToKing(piece, row) — turns a man into queenDark / queenLight on the last rank.
+Helpers (constants.js)
 
-getWinner(board) — "dark", "light", or null.
+- `BOARD_SIZE = 8`
+- `getIndexByRowCol(row, col)` / `getRowColByIndex(i)`
+- `isDarkCell(row, col)` — playable squares
+- `isMyPiece(player, cell)` — ownership check used by the UI
 
-Components & state
+## Why Set
 
-Square — a single board cell (symbols: ● ○ ♚ ♔).
+Move targets are represented as `Set<number>`:
 
-Board — 8×8 grid of Square.
+- Guarantees no duplicates
+- Fast lookups with `moves.has(index)`
+- Semantically clearer than arrays for unordered unique collections
 
-Game — stateful container:
+Internally `slideTargets` and `captureTargets` are also `Set`s, and the public API returns a new Set(...) to keep immutability.
 
-history: list of board positions (enables turn switching and paves the way for undo/redo).
+## Design Decisions
 
-selected: currently picked square.
+- Error on invalid input: when `originIndex` is `null`, rule functions throw; the caller decides when to compute moves. This distinguishes "no legal moves" (empty set) from "invalid request" (exception).
+- King landing rule: current variant enforces landing on the first empty square after the captured piece. International draughts allow landing beyond; this can be made configurable.
+- Chaining enforcement: after any capture, if the same piece can capture again, the UI restricts to capture-only moves until the chain ends.
 
-mustJumpFrom: when set, the user must continue the capture chain with that piece; UI shows only landing squares that continue the chain.
+## Roadmap
 
-Computed: player, winner, validMoves.
+- Global "must capture" at turn start (if any capture exists on the board, disallow quiet moves)
+- Draw handling (e.g., no legal moves while pieces remain)
+- Undo/Redo UI (history navigation)
+- Configurable king landing rule (first empty vs any beyond)
+- Simple bot / online play
+- More tests (promotion during chain, multi-branch captures, edge cases)
 
-Move flow
+## Troubleshooting
 
-Click your piece ⇒ it becomes selected.
+- "React is not defined" in tests: if a test renders JSX, ensure `import React from 'react'` or enable the automatic JSX runtime in your test runner.
+- Vertical gaps between rows: add `.board { line-height: 0; }` and render each row with `display: flex`.
+- `Error: originIndex ... cannot be null`: by design, the caller must guard against `null` before invoking rules.
 
-Click a highlighted destination ⇒ makeMove applies the move.
+## License
 
-If the move captured and the same piece can capture again:
-
-Replace the latest board without advancing the move counter,
-
-Set mustJumpFrom to the new square,
-
-Keep the same player’s turn and show capture-only moves.
-
-Otherwise, append to history, clear selections, pass the turn.
-
-Styling & customization
-
-All styles are in styles.css.
-
-Centered board card with soft shadow and rounded corners.
-
-Selected square uses a focus outline; legal moves are green dots.
-
-To change square size, tweak a CSS variable:
-
-:root { --square-size: 72px; }
-.square {
-  width: var(--square-size);
-  height: var(--square-size);
-}
-.board { line-height: 0; } /* removes row gaps */
-
-
-You can also theme colors for .square--dark, .square--selected, and .square--hint.
-
-Sample tests
-
-Initial setup:
-
-import { initBoard } from './App.jsx';
-
-test('initial board has 12 dark and 12 light men', () => {
-  const b = initBoard();
-  expect(b.filter(x => x === 'dark').length).toBe(12);
-  expect(b.filter(x => x === 'light').length).toBe(12);
-});
-
-
-Backward capture by a man (allowed in Russian checkers):
-
-import { canMove } from './App.jsx';
-import { getIndexByRowCol } from './constants.js';
-
-test('a light man can capture backward', () => {
-  const b = Array(64).fill(null);
-  // light at (4,4), dark at (5,5) -> capture landing (6,6)
-  b[getIndexByRowCol(4,4)] = 'light';
-  b[getIndexByRowCol(5,5)] = 'dark';
-  const moves = canMove(b, getIndexByRowCol(4,4), 'light');
-  expect(moves.has(getIndexByRowCol(6,6))).toBe(true);
-});
-
-
-King’s landing rule (first empty square after the captured piece in this variant):
-
-import { canMoveQueen } from './App.jsx';
-import { getIndexByRowCol } from './constants.js';
-
-test('queen must land on the first empty square after a single enemy', () => {
-  const b = Array(64).fill(null);
-  b[getIndexByRowCol(3,3)] = 'queenDark';
-  b[getIndexByRowCol(2,2)] = 'light'; // enemy
-  // Only the first empty after (2,2) is valid: (1,1)
-  const moves = canMoveQueen(b, getIndexByRowCol(3,3), 'dark', true);
-  expect(moves.has(getIndexByRowCol(1,1))).toBe(true);
-});
-
-
-If your tests instantiate JSX (e.g., rendering <Square /> directly), remember to import React from 'react' in that test file (depending on your tooling).
-
-Known limitations / Nice-to-haves
-
-Global “must capture” at turn start: currently, the app strictly enforces continuation of a capture sequence with the same piece. Many rule sets also require that if any capture exists on the board, only capturing moves are allowed. You can add a pre-check before selection to enforce that globally.
-
-Draws (no legal moves but pieces remain) — currently returns winner = null; you can add explicit draw handling.
-
-Undo/Redo (history UI).
-
-Configurable king landing rule:
-
-Current: land on the first empty after the jumped piece.
-
-Variant: allow landing on any empty beyond (International draughts).
-
-Bot / online play.
-
-More tests: e.g., promotion during a capture sequence and immediate continuation, multi-capture branches, etc.
-
-Troubleshooting
-
-“React is not defined” in tests — if a test uses JSX, add import React from 'react' at the top (or ensure your test runner is configured for the automatic JSX runtime).
-
-Squares have vertical gaps — ensure .board { line-height: 0; } is present and each row is display:flex.
-
-Rules refresher (short)
-
-Men move forward, capture any direction (forward/backward).
-
-Captures are mandatory. After any capture, if the same piece can capture again, you must continue with that same piece.
-
-Promotion occurs when a man reaches the farthest rank.
-
-Kings move and capture diagonally across multiple squares (with the chosen landing rule).
-
-Enjoy the game—and feel free to extend it!
+MIT
